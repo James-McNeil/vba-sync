@@ -2,7 +2,7 @@ Attribute VB_Name = "modSync"
 Option Explicit
 
 '--- modSync.bas ---
-'Exports every VBA component to sub‑folders inside a "src" tree and re‑imports
+'Exports every VBA component to sub-folders inside a "src" tree and re-imports
 'them.  **Requires the workbook to be opened from a local or synced drive path.**
 'If the file is opened directly from SharePoint/Teams via an https:// URL the
 'user is warned and the operation is cancelled (no silent fallback).
@@ -11,7 +11,7 @@ Option Explicit
 'worksheet schemas) to enable version control and AI collaboration on both
 'VBA code AND Excel data models.
 '
-'Folder layout – mirrors the VBE tree + Excel structure
+'Folder layout - mirrors the VBE tree + Excel structure
 '  src\Objects\        sheet / ThisWorkbook modules (.cls)
 '  src\Modules\        standard modules (.bas)
 '  src\ClassModules\   class modules (.cls)
@@ -51,13 +51,13 @@ Public Sub ImportProject(control As Object)
 End Sub
 
 '====================  MAIN ROUTINES  ======================
-Public Sub DoExportAddin()
+Private Sub DoExportAddin()
     Dim wb As Workbook: Set wb = ThisWorkbook
     If wb Is Nothing Then Exit Sub
 
-    Dim rootPath As String: rootPath = GetRootPath(wb)   '�\src\
+    Dim rootPath As String: rootPath = GetRootPath(wb)   '...\src\
     If rootPath = "" Then Exit Sub
-    Dim repoPath As String: repoPath = GetRepoPath(wb)   '�\ (workbook folder)
+    Dim repoPath As String: repoPath = GetRepoPath(wb)   '...\ (workbook folder)
 
     Dim exported As Object: Set exported = CreateObject("Scripting.Dictionary")
 
@@ -73,7 +73,7 @@ Public Sub DoExportAddin()
 
         subDir = rootPath & CompFolder(comp.Type) & "\"
         EnsureFolder subDir
-        fullPath = subDir & comp.Name & Ext(comp.Type)
+        fullPath = subDir & comp.Name & GetExt(comp.Type)
         comp.Export fullPath
         exported(AddSlash(fullPath)) = True
         If comp.Type = vbext_ct_MSForm Then
@@ -95,13 +95,13 @@ NextComponent:
     End If
 End Sub
 
-Public Sub DoExportProject()
+Private Sub DoExportProject()
     Dim wb As Workbook: Set wb = TargetWB()
     If wb Is Nothing Then Exit Sub
 
-    Dim rootPath As String: rootPath = GetRootPath(wb)   '…\src\
+    Dim rootPath As String: rootPath = GetRootPath(wb)   '...\src\
     If rootPath = "" Then Exit Sub
-    Dim repoPath As String: repoPath = GetRepoPath(wb)   '…\ (workbook folder)
+    Dim repoPath As String: repoPath = GetRepoPath(wb)   '...\ (workbook folder)
 
     Dim exported As Object: Set exported = CreateObject("Scripting.Dictionary")
 
@@ -118,7 +118,7 @@ Public Sub DoExportProject()
 
         subDir = rootPath & CompFolder(comp.Type) & "\"
         EnsureFolder subDir
-        fullPath = subDir & comp.Name & Ext(comp.Type)
+        fullPath = subDir & comp.Name & GetExt(comp.Type)
         comp.Export fullPath                        'writes .frm+.frx automatically
         exported(AddSlash(fullPath)) = True
         If comp.Type = vbext_ct_MSForm Then
@@ -231,10 +231,10 @@ Private Sub CopyExcelFileWithLimit(sourcePath As String, destDir As String, file
         sourceText = fso.OpenTextFile(sourcePath, 1).ReadAll
         
         ' Limit to first N lines to avoid huge worksheet data files
-        Dim lines As Variant: lines = Split(sourceText, vbCrLf)
-        If UBound(lines) > maxLines Then
-            ReDim Preserve lines(0 To maxLines)
-            sourceText = Join(lines, vbCrLf) & vbCrLf & _
+        Dim Lines As Variant: Lines = Split(sourceText, vbCrLf)
+        If UBound(Lines) > maxLines Then
+            ReDim Preserve Lines(0 To maxLines)
+            sourceText = Join(Lines, vbCrLf) & vbCrLf & _
                         "<!-- Truncated at " & maxLines & " lines by VBA Sync to avoid large files -->"
         End If
         
@@ -306,24 +306,24 @@ Private Sub CreateExcelStructureSummary(wb As Workbook, excelDir As String, expo
     exported(AddSlash(summaryPath)) = True
 End Sub
 
-Public Sub DoImportProject()
+Private Sub DoImportProject()
     Dim wb As Workbook: Set wb = TargetWB()
     If wb Is Nothing Then Exit Sub
 
     Dim rootPath As String: rootPath = GetRootPath(wb)
     If rootPath = "" Then Exit Sub
     If Dir(rootPath, vbDirectory) = "" Then
-        MsgBox "Nothing to import – folder '" & rootPath & "' not found.", vbExclamation
+        MsgBox "Nothing to import - folder '" & rootPath & "' not found.", vbExclamation
         Exit Sub
     End If
 
-    '‑‑ remove all non‑document components first
+    '-- remove all non-document components first
     Dim vc As Object
     For Each vc In wb.VBProject.VBComponents
         If vc.Type <> vbext_ct_Document Then wb.VBProject.VBComponents.Remove vc
     Next
 
-    '‑‑ iterate expected sub‑folders
+    '-- iterate expected sub-folders
     Dim subFolder As Variant, f As String, vbComp As Object, filePath As String
     For Each subFolder In Array("Modules", "ClassModules", "Forms", "Objects", "Misc")
         filePath = rootPath & subFolder & "\"
@@ -424,8 +424,8 @@ Private Sub WriteGitAttributes(basePath As String)
     Dim aPath As String: aPath = basePath & GIT_ATTRIB
 
     Dim txt As String
-    txt = "# Auto‑generated by VBA Sync Add‑in on " & Format(Now, "yyyy-mm-dd hh:nn:ss") & vbCrLf & _
-          "# Treat VBA text modules as LF‑normalised text files" & vbCrLf & _
+    txt = "# Auto-generated by VBA Sync Add-in on " & Format(Now, "yyyy-mm-dd hh:nn:ss") & vbCrLf & _
+          "# Treat VBA text modules as LF-normalised text files" & vbCrLf & _
           "*.bas text eol=lf" & vbCrLf & _
           "*.cls text eol=lf" & vbCrLf & _
           "*.frm text eol=lf" & vbCrLf & _
@@ -455,7 +455,7 @@ Private Sub WriteGitIgnore(basePath As String)
     Dim iPath As String: iPath = basePath & GIT_IGNORE
 
     Dim txt As String
-    txt = "# Auto‑generated by VBA Sync Add‑in on " & Format(Now, "yyyy-mm-dd hh:nn:ss") & vbCrLf & _
+    txt = "# Auto-generated by VBA Sync Add-in on " & Format(Now, "yyyy-mm-dd hh:nn:ss") & vbCrLf & _
           "# Ignore Excel/Office temp and cache files" & vbCrLf & _
           "~$*" & vbCrLf & _
           "*.tmp" & vbCrLf & _
@@ -503,19 +503,19 @@ Private Sub WriteReadme(basePath As String)
           "enabling Git version control, AI assistance, team collaboration, and professional development workflows " & _
           "for Excel-based applications." & vbCrLf & vbCrLf & _
           "## KEY BENEFITS" & vbCrLf & _
-          "- ** AI Collaboration **: AI can understand both your VBA code AND Excel data models" & vbCrLf & _
-          "- ** Version Control **: Full Git history of code changes, table schemas, and worksheet structure" & vbCrLf & _
-          "- ** Team Development **: Review changes, manage pull requests, and collaborate like software teams" & vbCrLf & _
-          "- ** Code Intelligence **: Syntax highlighting, linting, and IDE features in VS Code" & vbCrLf
+          "- **AI Collaboration**: AI can understand both your VBA code AND Excel data models" & vbCrLf & _
+          "- **Version Control**: Full Git history of code changes, table schemas, and worksheet structure" & vbCrLf & _
+          "- **Team Development**: Review changes, manage pull requests, and collaborate like software teams" & vbCrLf & _
+          "- **Code Intelligence**: Syntax highlighting, linting, and IDE features in VS Code" & vbCrLf
     
-    txt = txt & "- ** Data Model Tracking **: Version control Excel table definitions and worksheet schemas" & vbCrLf & _
-          "- ** Backup & Recovery **: Never lose VBA code changes again" & vbCrLf & vbCrLf & _
+    txt = txt & "- **Data Model Tracking**: Version control Excel table definitions and worksheet schemas" & vbCrLf & _
+          "- **Backup & Recovery**: Never lose VBA code changes again" & vbCrLf & vbCrLf & _
           "## QUICK START" & vbCrLf & _
-          "1. ** Install **: Copy `VBA Sync.xlam` to your Excel add-ins folder and enable it" & vbCrLf & _
-          "2. ** Open **: Open your Excel workbook locally (avoid SharePoint direct links)" & vbCrLf & _
-          "3. ** Export **: Click **VBA Sync > Export** to create the `src/` folder structure" & vbCrLf & _
-          "4. ** Develop **: Edit code in VS Code, use Git for version control, get AI assistance" & vbCrLf & _
-          "5. ** Import **: Click **VBA Sync > Import** to load changes back into Excel" & vbCrLf & vbCrLf & _
+          "1. **Install**: Copy `VBA Sync.xlam` to your Excel add-ins folder and enable it" & vbCrLf & _
+          "2. **Open**: Open your Excel workbook locally (avoid SharePoint direct links)" & vbCrLf & _
+          "3. **Export**: Click **VBA Sync > Export** to create the `src/` folder structure" & vbCrLf & _
+          "4. **Develop**: Edit code in VS Code, use Git for version control, get AI assistance" & vbCrLf & _
+          "5. **Import**: Click **VBA Sync > Import** to load changes back into Excel" & vbCrLf & vbCrLf & _
           "## WHAT GETS EXPORTED" & vbCrLf & "```" & vbCrLf
     
     txt = txt & "src/" & vbCrLf & _
@@ -535,12 +535,12 @@ Private Sub WriteReadme(basePath As String)
           "- `.gitignore` - Excludes Excel temp files and system cruft" & vbCrLf & _
           "- `README.md` - This file (created once, never overwritten)" & vbCrLf & vbCrLf & _
           "## REAL-WORLD USE CASES" & vbCrLf & _
-          "- ** Financial Models **: Version control formulas, table schemas, and VBA business logic" & vbCrLf & _
-          "- ** Reporting Tools **: Track changes to data processing pipelines and report generation" & vbCrLf & _
-          "- ** Dashboard Applications **: Collaborate on interactive Excel apps with professional workflows" & vbCrLf & _
-          "- ** Data Integration **: Manage API connections, database queries, and ETL processes" & vbCrLf
+          "- **Financial Models**: Version control formulas, table schemas, and VBA business logic" & vbCrLf & _
+          "- **Reporting Tools**: Track changes to data processing pipelines and report generation" & vbCrLf & _
+          "- **Dashboard Applications**: Collaborate on interactive Excel apps with professional workflows" & vbCrLf & _
+          "- **Data Integration**: Manage API connections, database queries, and ETL processes" & vbCrLf
     
-    txt = txt & "- ** Automation Scripts **: Version control Excel automation with full change history" & vbCrLf & vbCrLf & _
+    txt = txt & "- **Automation Scripts**: Version control Excel automation with full change history" & vbCrLf & vbCrLf & _
           "## INSTALLATION" & vbCrLf & _
           "1. Download `VBA Sync.xlam` from the repository" & vbCrLf & _
           "2. Copy to your Excel add-ins folder (usually `%APPDATA%\Microsoft\AddIns\`)" & vbCrLf & _
@@ -548,23 +548,23 @@ Private Sub WriteReadme(basePath As String)
           "4. Select `VBA Sync.xlam` and check the box to enable it" & vbCrLf & _
           "5. Look for the **VBA Sync** ribbon tab" & vbCrLf & vbCrLf & _
           "## PRO TIPS" & vbCrLf & _
-          "- ** Git Integration **: Initialize a Git repository in your workbook folder for full version control" & vbCrLf & _
-          "- ** VS Code **: Install VBA language extensions for syntax highlighting and IntelliSense" & vbCrLf
+          "- **Git Integration**: Initialize a Git repository in your workbook folder for full version control" & vbCrLf & _
+          "- **VS Code**: Install VBA language extensions for syntax highlighting and IntelliSense" & vbCrLf
     
-    txt = txt & "- ** AI Assistance **: Tools like GitHub Copilot can now understand your Excel data models" & vbCrLf & _
-          "- ** Team Workflow **: Use Git branches and pull requests for collaborative Excel development" & vbCrLf & _
-          "- ** Documentation **: The auto-generated `STRUCTURE_SUMMARY.md` helps onboard new team members" & vbCrLf & vbCrLf & _
+    txt = txt & "- **AI Assistance**: Tools like GitHub Copilot can now understand your Excel data models" & vbCrLf & _
+          "- **Team Workflow**: Use Git branches and pull requests for collaborative Excel development" & vbCrLf & _
+          "- **Documentation**: The auto-generated `STRUCTURE_SUMMARY.md` helps onboard new team members" & vbCrLf & vbCrLf & _
           "## IMPORTANT NOTES" & vbCrLf & _
-          "- ** Local Files Only **: Must open Excel files from local/synced folders (not SharePoint URLs)" & vbCrLf & _
-          "- ** VBA Only Import **: Excel structure export is for versioning; import only updates VBA code" & vbCrLf & _
-          "- ** Smart Filtering **: Empty modules are skipped; removed components are cleaned up automatically" & vbCrLf & _
-          "- ** File Size **: Worksheet XML files are truncated at 200 lines to prevent huge files" & vbCrLf & _
-          "- ** Macro Security **: Ensure macro security settings allow the add-in to run" & vbCrLf & vbCrLf
+          "- **Local Files Only**: Must open Excel files from local/synced folders (not SharePoint URLs)" & vbCrLf & _
+          "- **VBA Only Import**: Excel structure export is for versioning; import only updates VBA code" & vbCrLf & _
+          "- **Smart Filtering**: Empty modules are skipped; removed components are cleaned up automatically" & vbCrLf & _
+          "- **File Size**: Worksheet XML files are truncated at 200 lines to prevent huge files" & vbCrLf & _
+          "- **Macro Security**: Ensure macro security settings allow the add-in to run" & vbCrLf & vbCrLf
     
     txt = txt & "## LICENSE" & vbCrLf & _
           "This project is released under the MIT License - feel free to use, modify, and distribute!" & vbCrLf & vbCrLf & _
           "## CREDITS" & vbCrLf & _
-          "Created by **Axiom Project Services Pty Ltd**" & vbCrLf & _
+          "Created by **Arnaud Lavignolle** at **Axiom Project Services Pty Ltd**" & vbCrLf & _
           "Built to bridge the gap between Excel development and modern software engineering practices." & vbCrLf & vbCrLf & _
           "---" & vbCrLf & _
           "*Generated by VBA Sync on " & Format(Now, "yyyy-mm-dd") & " - Happy coding!*"
@@ -586,13 +586,13 @@ Private Function CompFolder(t As Long) As String
     End Select
 End Function
 
-Private Function Ext(t As Long) As String
+Private Function GetExt(t As Long) As String
     Select Case t
-        Case vbext_ct_StdModule:     Ext = ".bas"
-        Case vbext_ct_ClassModule:   Ext = ".cls"
-        Case vbext_ct_MSForm:        Ext = ".frm"   'paired .frx auto‑exported
-        Case vbext_ct_Document:      Ext = ".cls"   'sheet / ThisWorkbook code‑behind
-        Case Else:                   Ext = ".bas"
+        Case vbext_ct_StdModule:     GetExt = ".bas"
+        Case vbext_ct_ClassModule:   GetExt = ".cls"
+        Case vbext_ct_MSForm:        GetExt = ".frm"   'paired .frx auto-exported
+        Case vbext_ct_Document:      GetExt = ".cls"   'sheet / ThisWorkbook code-behind
+        Case Else:                   GetExt = ".bas"
     End Select
 End Function
 
@@ -642,7 +642,7 @@ Private Function TargetWB() As Workbook
     If wb Is Nothing Then
         MsgBox "No workbook is active.", vbExclamation
     ElseIf wb.IsAddin Then
-        MsgBox "Switch to the workbook you want to export, not the add‑in tab.", vbExclamation
+        MsgBox "Switch to the workbook you want to export, not the add-in tab.", vbExclamation
         Set wb = Nothing
     End If
     Set TargetWB = wb
@@ -662,3 +662,7 @@ Private Function CleanCode(src As String) As String
     Next
     CleanCode = RTrim$(out)
 End Function
+
+
+
+
