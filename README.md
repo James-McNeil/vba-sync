@@ -53,9 +53,13 @@ Plus auto-generated Git configuration files:
 ## 🔧 Installation
 
 1. Download `VBA Sync.xlam` from this repository
-2. **Double-click** the VBA Sync.xlam file - Excel will prompt to install it automatically
-3. Click "Enable" when Excel asks about the add-in
-4. The **VBA Sync** tab should appear in the ribbon
+2. **Unblock the file** (Windows security protection):
+   - Right-click the downloaded `VBA Sync.xlam` file
+   - Select "Properties"
+   - Check "Unblock" at the bottom and click OK
+3. **Double-click** the VBA Sync.xlam file - Excel will prompt to install it automatically
+4. Click "Enable" when Excel asks about the add-in
+5. The **VBA Sync** tab should appear in the ribbon
 
 **If the simple method doesn't work:**
 
