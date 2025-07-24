@@ -17,19 +17,19 @@ This Excel add-in automatically exports your VBA project AND Excel file structur
 
 1. **Install**: Download `VBA Sync.xlam`, copy to your Excel add-ins folder and enable it
 2. **Open**: Open your Excel workbook locally (avoid SharePoint direct links)
-3. **Export**: Click **VBA Sync > Export** to create the `src/` folder structure
+3. **Export**: Click **VBA Sync > Export** to create folder structure (named after your Excel file)
 4. **Develop**: Edit code in VS Code, use Git for version control, get AI assistance
 5. **Import**: Click **VBA Sync > Import** to load changes back into Excel
 
 ## 📁 What Gets Exported
 
 ```
-src/
+YourWorkbook/
 ├── Modules/              # Standard VBA modules (.bas)
 ├── ClassModules/         # VBA class modules (.cls)
 ├── Forms/                # UserForms (.frm + .frx)
 ├── Objects/              # ThisWorkbook & Sheet modules (.cls)
-└── Excel/                # Excel file structure (NEW!)
+└── Excel/                # Excel file structure
     ├── workbook.xml      # Workbook structure & named ranges
     ├── tables/           # Excel table definitions (*.xml)
     ├── worksheets/       # Worksheet schemas (*.xml)
@@ -53,10 +53,19 @@ Plus auto-generated Git configuration files:
 ## 🔧 Installation
 
 1. Download `VBA Sync.xlam` from this repository
-2. Copy to your Excel add-ins folder (usually `%APPDATA%\Microsoft\AddIns\`)
-3. Open Excel → File → Options → Add-ins → Excel Add-ins → Browse
-4. Select `VBA Sync.xlam` and check the box to enable it
-5. Look for the **VBA Sync** ribbon tab
+2. **Double-click** the VBA Sync.xlam file - Excel will prompt to install it automatically
+3. Click "Enable" when Excel asks about the add-in
+4. The **VBA Sync** tab should appear in the ribbon
+
+**If the simple method doesn't work:**
+
+- Copy .xlam to Excel add-ins folder (`%APPDATA%\Microsoft\AddIns\`)
+- Excel → File → Options → Add-ins → Excel Add-ins → Browse → Select file
+
+**Important**: Enable "Trust access to the VBA project object model":
+
+- File → Options → Trust Center → Trust Center Settings
+- Macro Settings → Check "Trust access to the VBA project object model"
 
 ## 💡 Pro Tips
 
@@ -70,9 +79,10 @@ Plus auto-generated Git configuration files:
 
 - **Local Files Only**: Must open Excel files from local/synced folders (not SharePoint URLs)
 - **VBA Only Import**: Excel structure export is for versioning; import only updates VBA code
-- **Smart Filtering**: Empty modules are skipped; removed components are cleaned up automatically
-- **File Size**: Worksheet XML files are truncated at 200 lines to prevent huge files
+- **Smart Filtering**: Empty document modules (sheets/ThisWorkbook) are skipped; removed components are cleaned up automatically
+- **File Size**: Worksheet XML files are truncated to prevent huge files
 - **Macro Security**: Ensure macro security settings allow the add-in to run
+- **Backup Recommended**: Save/backup your workbook before first export
 
 ## ✨ What Makes This Special
 
