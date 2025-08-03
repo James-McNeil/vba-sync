@@ -97,6 +97,20 @@ Private Sub DoExportAddin()
     Dim wb As Workbook: Set wb = ThisWorkbook
     If wb Is Nothing Then Exit Sub
 
+    ' Save workbook before export to ensure latest changes are included
+    Debug.Print "VBA Sync: Saving workbook before export..."
+    On Error Resume Next
+    wb.Save
+    If Err.Number <> 0 Then
+        Debug.Print "VBA Sync: Error - Could not save workbook: " & Err.Description
+        MsgBox "Error: Could not save workbook before export. " & _
+               "Export cancelled to prevent data loss." & vbCrLf & vbCrLf & "Error: " & Err.Description, vbCritical, "VBA Sync"
+        Err.Clear
+        On Error GoTo 0
+        Exit Sub
+    End If
+    On Error GoTo 0
+    
     Debug.Print "VBA Sync: Starting export of " & wb.Name
     
     Dim rootPath As String: rootPath = GetRootPath(wb)
@@ -141,6 +155,20 @@ Private Sub DoExportProject()
     Dim wb As Workbook: Set wb = TargetWB()
     If wb Is Nothing Then Exit Sub
 
+    ' Save workbook before export to ensure latest changes are included
+    Debug.Print "VBA Sync: Saving workbook before export..."
+    On Error Resume Next
+    wb.Save
+    If Err.Number <> 0 Then
+        Debug.Print "VBA Sync: Error - Could not save workbook: " & Err.Description
+        MsgBox "Error: Could not save workbook before export. " & _
+               "Export cancelled to prevent data loss." & vbCrLf & vbCrLf & "Error: " & Err.Description, vbCritical, "VBA Sync"
+        Err.Clear
+        On Error GoTo 0
+        Exit Sub
+    End If
+    On Error GoTo 0
+    
     Debug.Print "VBA Sync: Starting export of " & wb.Name
     
     Dim rootPath As String: rootPath = GetRootPath(wb)
