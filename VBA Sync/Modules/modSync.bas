@@ -24,11 +24,11 @@ Option Explicit
 ' SOFTWARE.
 
 ' VBA Sync Module
-' 
+'
 ' Bidirectional sync between Excel VBA projects and filesystem for version control,
 ' collaboration, and AI assistance.
-' 
-' EXPORT: Extracts all VBA code (modules, classes, forms, sheets) and Excel structure 
+'
+' EXPORT: Extracts all VBA code (modules, classes, forms, sheets) and Excel structure
 '         (tables, worksheets, workbook metadata) to organized folder structure.
 '         Creates Git configuration files (.gitattributes, .gitignore, README.md).
 '         Enables professional development workflows with version control, code review,
@@ -47,7 +47,7 @@ Option Explicit
 ' 5. Click OK - the VBA Sync tab should appear in the ribbon
 ' 6. If tab doesn't appear: restart Excel or check macro security settings
 '
-' REQUIREMENTS: 
+' REQUIREMENTS:
 ' - Workbook must be saved locally or on synced drive (not SharePoint URLs)
 ' - Enable "Trust access to the VBA project object model":
 '   1. File > Options > Trust Center > Trust Center Settings
@@ -68,7 +68,7 @@ Option Explicit
 ' Creates folder structure named after workbook:
 '   MyWorkbook\
 '     Objects\      - Sheet and ThisWorkbook modules
-'     Modules\      - Standard modules  
+'     Modules\      - Standard modules
 '     ClassModules\ - Class modules
 '     Forms\        - UserForms
 '     Excel\        - Workbook structure files
@@ -373,7 +373,7 @@ Private Sub DoImportProject()
     Debug.Print "VBA Sync: Removing existing VBA components..."
     Dim vc As Object
     For Each vc In wb.VBProject.VBComponents
-        If vc.Type <> vbext_ct_Document Then 
+        If vc.Type <> vbext_ct_Document Then
             wb.VBProject.VBComponents.Remove vc
         End If
     Next
@@ -494,7 +494,7 @@ End Function
 Private Sub WriteGitAttributes(basePath As String)
     Dim fso As Object: Set fso = CreateObject("Scripting.FileSystemObject")
     Dim aPath As String: aPath = basePath & GIT_ATTRIB
-    If fso.FileExists(aPath) Then 
+    If fso.FileExists(aPath) Then
         Debug.Print "VBA Sync: .gitattributes already exists, skipping"
         Exit Sub
     End If
@@ -526,7 +526,7 @@ End Sub
 Private Sub WriteGitIgnore(basePath As String)
     Dim fso As Object: Set fso = CreateObject("Scripting.FileSystemObject")
     Dim iPath As String: iPath = basePath & GIT_IGNORE
-    If fso.FileExists(iPath) Then 
+    If fso.FileExists(iPath) Then
         Debug.Print "VBA Sync: .gitignore already exists, skipping"
         Exit Sub
     End If
@@ -568,7 +568,7 @@ End Sub
 Private Sub WriteReadme(basePath As String, wb As Workbook)
     Dim fso As Object: Set fso = CreateObject("Scripting.FileSystemObject")
     Dim rPath As String: rPath = basePath & README_FILE
-    If fso.FileExists(rPath) Then 
+    If fso.FileExists(rPath) Then
         Debug.Print "VBA Sync: README.md already exists, skipping"
         Exit Sub
     End If
@@ -730,5 +730,3 @@ Private Sub CleanExportedFile(filePath As String)
 CleanError:
     ' Continue silently if cleanup fails - don't break the export process
 End Sub
-
-
