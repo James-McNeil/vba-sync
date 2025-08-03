@@ -102,12 +102,12 @@ Private Sub DoExportAddin()
     On Error Resume Next
     wb.Save
     If Err.Number <> 0 Then
-        Debug.Print "VBA Sync: Error - Could not save workbook: " & Err.Description
-        MsgBox "Error: Could not save workbook before export. " & _
-               "Export cancelled to prevent data loss." & vbCrLf & vbCrLf & "Error: " & Err.Description, vbCritical, "VBA Sync"
-        Err.Clear
-        On Error GoTo 0
-        Exit Sub
+      Debug.Print "VBA Sync: Error - Could not save workbook: " & Err.Description
+      MsgBox "Error: Could not save workbook before export. " & _
+              "Export cancelled to prevent data loss." & vbCrLf & vbCrLf & "Error: " & Err.Description, vbCritical, "VBA Sync"
+      Err.Clear
+      On Error GoTo 0
+      Exit Sub
     End If
     On Error GoTo 0
     
@@ -160,12 +160,12 @@ Private Sub DoExportProject()
     On Error Resume Next
     wb.Save
     If Err.Number <> 0 Then
-        Debug.Print "VBA Sync: Error - Could not save workbook: " & Err.Description
-        MsgBox "Error: Could not save workbook before export. " & _
-               "Export cancelled to prevent data loss." & vbCrLf & vbCrLf & "Error: " & Err.Description, vbCritical, "VBA Sync"
-        Err.Clear
-        On Error GoTo 0
-        Exit Sub
+      Debug.Print "VBA Sync: Error - Could not save workbook: " & Err.Description
+      MsgBox "Error: Could not save workbook before export. " & _
+              "Export cancelled to prevent data loss." & vbCrLf & vbCrLf & "Error: " & Err.Description, vbCritical, "VBA Sync"
+      Err.Clear
+      On Error GoTo 0
+      Exit Sub
     End If
     On Error GoTo 0
     
