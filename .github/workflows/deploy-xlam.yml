@@ -13,9 +13,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Excel-Addin-Generator (your fork)
+        run: pip install git+https://github.com/James-McNeil/Excel-Addin-Generator.git
+
+      - name: Build XLAM from template
+        run: python -m excelAddinGenerator.main "VBA Sync.xlam" "VBA Sync.xlam"
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: VBA\ Sync.xlam
+          files: VBA Sync.xlam
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
