@@ -1,0 +1,21 @@
+# .github/workflows/deploy-xlam.yml
+name: Deploy XLAM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: VBA\ Sync.xlam
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
