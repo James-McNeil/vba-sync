@@ -16,13 +16,63 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: "3.x"
 
-      - name: Install Excel-Addin-Generator (your fork)
+      - name: Install vbaProject-Compiler (MS-OVBA) - Your Fork
+        run: pip install git+https://github.com/James-McNeil/MS-OVBA.git
+
+      - name: Install Excel-Addin-Generator - Your Fork
         run: pip install git+https://github.com/James-McNeil/Excel-Addin-Generator.git
 
-      - name: Build XLAM from template
-        run: python -m excelAddinGenerator.main "VBA Sync.xlam" "VBA Sync.xlam"
+      - name: Install additional dependencies
+        run: pip install ms-ovba-compression ms-ovba-crypto
+
+      - name: Build vbaProject.bin from source
+        run: |
+          python - <<'EOF'
+          from vbaProjectCompiler.builder import build_from_directory
+          from vbaProjectCompiler.ole_file import OleFile
+
+          # Use the builder helper to create project from directory structure
+          print("Building VBA project from source files...")
+          project = build_from_directory("VBA-Sync")
+
+          # Write the vbaProject.bin file using OleFile
+          print("Writing vbaProject.bin...")
+          ole_file = OleFile(project)
+          ole_file.writeFile("vbaProject.bin")
+          print("Successfully created vbaProject.bin")
+          EOF
+
+      - name: Package as Excel Add-in (.xlam)
+        run: |
+          python - <<'EOF'
+          import os
+          from pathlib import Path
+          from excelAddinGenerator.main import createFromBin
+
+          def package_xlam(vba_bin, output_xlam):
+              """Package vbaProject.bin into Excel Add-in (.xlam)."""
+              print(f"Creating {output_xlam} from {vba_bin}...")
+              
+              # Get wrapper directory from excelAddinGenerator package
+              import excelAddinGenerator
+              package_dir = Path(excelAddinGenerator.__file__).parent.parent
+              wrapper_dir = str(package_dir / "src" / "data")
+              
+              # Create .xlam file
+              createFromBin(vba_bin, wrapper_dir, output_xlam)
+              
+              # Cleanup intermediate binary
+              if os.path.exists(vba_bin):
+                  os.remove(vba_bin)
+                  print(f"Cleaned up {vba_bin}")
+              
+              print(f"Successfully created {output_xlam}")
+
+          # Package the binary into .xlam
+          package_xlam("vbaProject.bin", "VBA Sync.xlam")
+          EOF
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
