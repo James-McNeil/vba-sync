@@ -110,4 +110,3 @@ Built to bridge the gap between Excel development and modern software engineerin
 ---
 
 _Making Excel development as professional as any other software project._ 🎉
- 
