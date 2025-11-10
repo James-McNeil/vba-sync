@@ -16,32 +16,62 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: "3.10"
 
-      - name: Install vbaProject-Compiler (MS-OVBA) - Your Fork
-        run: pip install git+https://github.com/James-McNeil/MS-OVBA.git
-
-      - name: Install Excel-Addin-Generator - Your Fork
-        run: pip install git+https://github.com/James-McNeil/Excel-Addin-Generator.git
-
-      - name: Install additional dependencies
-        run: pip install ms-ovba-compression ms-ovba-crypto
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install MS-CFB and MS-Pcode-Assembler from dev branches (required for OleFile)
+          pip install git+https://github.com/Beakerboy/MS-CFB@dev
+          pip install git+https://github.com/Beakerboy/MS-Pcode-Assembler@dev
+          # Install compression and crypto libraries
+          pip install ms-ovba-compression ms-ovba-crypto
+          # Install your MS-OVBA fork
+          pip install git+https://github.com/James-McNeil/MS-OVBA.git
+          # Install Excel-Addin-Generator
+          pip install git+https://github.com/James-McNeil/Excel-Addin-Generator.git
 
       - name: Build vbaProject.bin from source
         run: |
           python - <<'EOF'
           from vbaProjectCompiler.builder import build_from_directory
-          from vbaProjectCompiler.ole_file import OleFile
+          from ms_cfb.ole_file import OleFile
+          from ms_cfb.Models.Directories.storage_directory import StorageDirectory
+          from ms_cfb.Models.Directories.stream_directory import StreamDirectory
+          import os
 
-          # Use the builder helper to create project from directory structure
-          print("Building VBA project from source files...")
+          # Build VBA project from source files
+          print("Building VBA project from directory structure...")
           project = build_from_directory("VBA-Sync")
+          print(f"Created project with {len(project.modules)} modules")
 
-          # Write the vbaProject.bin file using OleFile
-          print("Writing vbaProject.bin...")
-          ole_file = OleFile(project)
-          ole_file.writeFile("vbaProject.bin")
-          print("Successfully created vbaProject.bin")
+          # Create binary files for each module
+          print("\nCreating module binaries...")
+          project._create_binary_files()
+
+          # Build OLE directory structure
+          print("Building OLE directory structure...")
+          vba_storage = StorageDirectory()
+          vba_storage.set_name("VBA")
+
+          # Add each module as a stream
+          for module in project.modules:
+              bin_path = f"vbaProjectCompiler/blank_files/{module.get_name()}.cls.bin"
+              if os.path.exists(bin_path):
+                  stream_dir = StreamDirectory()
+                  stream_dir.set_name(module.get_name())
+                  stream_dir.add_stream(bin_path)
+                  vba_storage.add_directory(stream_dir)
+                  print(f"  Added module: {module.get_name()}")
+
+          # Create OLE file and write vbaProject.bin
+          print("\nWriting vbaProject.bin...")
+          ole_file = OleFile()
+          ole_file.add_directory(vba_storage)
+          ole_file.build_file()
+          ole_file.write_file(".", "vbaProject.bin")
+          
+          print("Successfully created vbaProject.bin!")
           EOF
 
       - name: Package as Excel Add-in (.xlam)
