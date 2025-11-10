@@ -81,6 +81,7 @@ Option Explicit
 Const GIT_ATTRIB As String = ".gitattributes"
 Const GIT_IGNORE As String = ".gitignore"
 Const README_FILE As String = "README.md"
+Const ENABLE_WORKSHEET_TRUNCATION As Boolean = False  ' Set to True to limit worksheet XML size
 Const WORKSHEET_LINE_LIMIT As Long = 200
 
 '====================  Ribbon wrappers  ====================
@@ -294,7 +295,16 @@ Private Sub CopyExcelFile(sourcePath As String, destDir As String, fileName As S
     Dim fso As Object: Set fso = CreateObject("Scripting.FileSystemObject")
     If fso.FileExists(sourcePath) Then
         Dim destPath As String: destPath = destDir & fileName
-        fso.CopyFile sourcePath, destPath, True
+
+        ' Read, format, and write XML file
+        Dim sourceText As String
+        sourceText = fso.OpenTextFile(sourcePath, 1).ReadAll
+        sourceText = FormatXML(sourceText)
+
+        Dim ts As Object: Set ts = fso.CreateTextFile(destPath, True)
+        ts.Write sourceText
+        ts.Close
+
         exported(AddSlash(destPath)) = True
     End If
 End Sub
@@ -304,15 +314,20 @@ Private Sub CopyExcelFileWithLimit(sourcePath As String, destDir As String, file
     If fso.FileExists(sourcePath) Then
         Dim sourceText As String
         sourceText = fso.OpenTextFile(sourcePath, 1).ReadAll
-        
-        ' Limit to first N lines to avoid huge worksheet data files
-        Dim Lines As Variant: Lines = Split(sourceText, vbCrLf)
-        If UBound(Lines) > maxLines Then
-            ReDim Preserve Lines(0 To maxLines)
-            sourceText = Join(Lines, vbCrLf) & vbCrLf & _
-                        "<!-- Truncated at " & maxLines & " lines by VBA Sync to avoid large files -->"
+
+        ' Format XML first for better readability
+        sourceText = FormatXML(sourceText)
+
+        ' Optionally limit to first N lines to avoid huge worksheet data files
+        If ENABLE_WORKSHEET_TRUNCATION Then
+            Dim Lines As Variant: Lines = Split(sourceText, vbCrLf)
+            If UBound(Lines) > maxLines Then
+                ReDim Preserve Lines(0 To maxLines)
+                sourceText = Join(Lines, vbCrLf) & vbCrLf & _
+                            "<!-- Truncated at " & maxLines & " lines by VBA Sync to avoid large files -->"
+            End If
         End If
-        
+
         Dim destPath As String: destPath = destDir & fileName
         Dim ts As Object: Set ts = fso.CreateTextFile(destPath, True)
         ts.Write sourceText
@@ -373,7 +388,11 @@ Private Sub CreateExcelStructureSummary(wb As Workbook, excelDir As String, expo
     summary = summary & "## Files Included" & vbCrLf
     summary = summary & "- `workbook.xml` - Overall workbook structure" & vbCrLf
     summary = summary & "- `tables/*.xml` - Excel table definitions" & vbCrLf
-    summary = summary & "- `worksheets/*.xml` - Worksheet schemas (first " & WORKSHEET_LINE_LIMIT & " lines)" & vbCrLf
+    If ENABLE_WORKSHEET_TRUNCATION Then
+        summary = summary & "- `worksheets/*.xml` - Worksheet schemas (first " & WORKSHEET_LINE_LIMIT & " lines)" & vbCrLf
+    Else
+        summary = summary & "- `worksheets/*.xml` - Full worksheet schemas" & vbCrLf
+    End If
     
     Dim ts As Object: Set ts = fso.CreateTextFile(summaryPath, True)
     ts.Write summary
@@ -735,30 +754,90 @@ End Function
 ' Remove trailing empty lines from exported VBA files
 Private Sub CleanExportedFile(filePath As String)
     On Error GoTo CleanError
-    
+
     Dim fso As Object: Set fso = CreateObject("Scripting.FileSystemObject")
     If Not fso.FileExists(filePath) Then Exit Sub
-    
+
     ' Read the file content
     Dim content As String
     content = fso.OpenTextFile(filePath, 1).ReadAll
-    
+
     ' Remove trailing empty lines (but preserve one final line break)
     Do While Right$(content, 4) = vbCrLf & vbCrLf
         content = Left$(content, Len(content) - 2)
     Loop
-    
+
     ' Ensure file ends with exactly one line break
     If Right$(content, 2) <> vbCrLf And Len(content) > 0 Then
         content = content & vbCrLf
     End If
-    
+
     ' Write back the cleaned content
     Dim ts As Object: Set ts = fso.CreateTextFile(filePath, True)
     ts.Write content
     ts.Close
-    
+
     Exit Sub
 CleanError:
     ' Continue silently if cleanup fails - don't break the export process
 End Sub
+
+' Format XML with proper indentation for readability
+Private Function FormatXML(xmlText As String) As String
+    On Error GoTo FormatError
+
+    ' Use MSXML to parse the XML
+    Dim xmlDoc As Object: Set xmlDoc = CreateObject("MSXML2.DOMDocument.6.0")
+    xmlDoc.async = False
+    xmlDoc.preserveWhiteSpace = False
+
+    ' Try to load the XML
+    If Not xmlDoc.LoadXML(xmlText) Then
+        ' Failed to parse - return original text
+        FormatXML = xmlText
+        Exit Function
+    End If
+
+    ' Use XSL transformation for pretty formatting
+    Dim xsl As Object: Set xsl = CreateObject("MSXML2.DOMDocument.6.0")
+    xsl.async = False
+
+    ' XSL stylesheet for indented XML output
+    Dim xslText As String
+    xslText = "<?xml version=""1.0""?>" & vbCrLf & _
+              "<xsl:stylesheet version=""1.0"" xmlns:xsl=""http://www.w3.org/1999/XSL/Transform"">" & vbCrLf & _
+              "  <xsl:output method=""xml"" indent=""yes"" encoding=""UTF-8""/>" & vbCrLf & _
+              "  <xsl:template match=""@*|node()"">" & vbCrLf & _
+              "    <xsl:copy>" & vbCrLf & _
+              "      <xsl:apply-templates select=""@*|node()""/>" & vbCrLf & _
+              "    </xsl:copy>" & vbCrLf & _
+              "  </xsl:template>" & vbCrLf & _
+              "</xsl:stylesheet>"
+
+    If Not xsl.LoadXML(xslText) Then
+        ' XSL failed to load - return original
+        FormatXML = xmlText
+        Exit Function
+    End If
+
+    ' Apply transformation
+    Dim formattedXml As String
+    formattedXml = xmlDoc.transformNode(xsl)
+
+    ' Remove XML declaration if original didn't have one
+    If Left$(Trim$(xmlText), 5) <> "<?xml" And Left$(Trim$(formattedXml), 5) = "<?xml" Then
+        ' Find the end of XML declaration
+        Dim declEnd As Long: declEnd = InStr(formattedXml, "?>")
+        If declEnd > 0 Then
+            formattedXml = Mid$(formattedXml, declEnd + 2)
+            formattedXml = LTrim$(formattedXml)
+        End If
+    End If
+
+    FormatXML = formattedXml
+    Exit Function
+
+FormatError:
+    ' If any error occurs, return the original text
+    FormatXML = xmlText
+End Function
