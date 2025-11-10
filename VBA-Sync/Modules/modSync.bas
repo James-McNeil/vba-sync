@@ -786,7 +786,7 @@ End Sub
 Private Function FormatXML(xmlText As String) As String
     On Error GoTo FormatError
 
-    ' Use MSXML to parse the XML
+    ' Use MSXML to parse and validate the XML
     Dim xmlDoc As Object: Set xmlDoc = CreateObject("MSXML2.DOMDocument.6.0")
     xmlDoc.async = False
     xmlDoc.preserveWhiteSpace = False
@@ -798,46 +798,111 @@ Private Function FormatXML(xmlText As String) As String
         Exit Function
     End If
 
-    ' Use XSL transformation for pretty formatting
-    Dim xsl As Object: Set xsl = CreateObject("MSXML2.DOMDocument.6.0")
-    xsl.async = False
+    ' Build formatted XML recursively
+    Dim result As String
+    result = ""
 
-    ' XSL stylesheet for indented XML output
-    Dim xslText As String
-    xslText = "<?xml version=""1.0""?>" & vbCrLf & _
-              "<xsl:stylesheet version=""1.0"" xmlns:xsl=""http://www.w3.org/1999/XSL/Transform"">" & vbCrLf & _
-              "  <xsl:output method=""xml"" indent=""yes"" encoding=""UTF-8""/>" & vbCrLf & _
-              "  <xsl:template match=""@*|node()"">" & vbCrLf & _
-              "    <xsl:copy>" & vbCrLf & _
-              "      <xsl:apply-templates select=""@*|node()""/>" & vbCrLf & _
-              "    </xsl:copy>" & vbCrLf & _
-              "  </xsl:template>" & vbCrLf & _
-              "</xsl:stylesheet>"
-
-    If Not xsl.LoadXML(xslText) Then
-        ' XSL failed to load - return original
-        FormatXML = xmlText
-        Exit Function
+    ' Add XML declaration if original had one
+    If Left$(Trim$(xmlText), 5) = "<?xml" Then
+        result = "<?xml version=""1.0"" encoding=""UTF-8""?>" & vbCrLf
     End If
 
-    ' Apply transformation
-    Dim formattedXml As String
-    formattedXml = xmlDoc.transformNode(xsl)
+    ' Format the document element
+    result = result & FormatXMLNode(xmlDoc.DocumentElement, 0)
 
-    ' Remove XML declaration if original didn't have one
-    If Left$(Trim$(xmlText), 5) <> "<?xml" And Left$(Trim$(formattedXml), 5) = "<?xml" Then
-        ' Find the end of XML declaration
-        Dim declEnd As Long: declEnd = InStr(formattedXml, "?>")
-        If declEnd > 0 Then
-            formattedXml = Mid$(formattedXml, declEnd + 2)
-            formattedXml = LTrim$(formattedXml)
-        End If
-    End If
-
-    FormatXML = formattedXml
+    FormatXML = result
     Exit Function
 
 FormatError:
     ' If any error occurs, return the original text
     FormatXML = xmlText
+End Function
+
+' Recursively format XML nodes with proper indentation
+Private Function FormatXMLNode(node As Object, depth As Long) As String
+    On Error GoTo NodeError
+
+    Const INDENT_SPACES As String = "  "  ' 2 spaces per indent level
+    Dim indent As String: indent = String(depth, INDENT_SPACES)
+    Dim result As String: result = ""
+
+    ' Skip text nodes that are only whitespace
+    If node.NodeType = 3 Then ' TEXT_NODE
+        Dim textValue As String: textValue = Trim$(node.Text)
+        If Len(textValue) > 0 Then
+            result = textValue
+        End If
+        FormatXMLNode = result
+        Exit Function
+    End If
+
+    ' Skip non-element nodes we don't format
+    If node.NodeType <> 1 Then ' Not an ELEMENT_NODE
+        FormatXMLNode = ""
+        Exit Function
+    End If
+
+    ' Start element tag
+    result = indent & "<" & node.nodeName
+
+    ' Add attributes
+    If Not node.Attributes Is Nothing Then
+        Dim attr As Object
+        For Each attr In node.Attributes
+            result = result & " " & attr.nodeName & "=""" & attr.Text & """"
+        Next
+    End If
+
+    ' Check if element has children
+    Dim hasElementChildren As Boolean: hasElementChildren = False
+    Dim hasTextContent As Boolean: hasTextContent = False
+    Dim textContent As String: textContent = ""
+
+    If Not node.ChildNodes Is Nothing Then
+        Dim child As Object
+        For Each child In node.ChildNodes
+            If child.NodeType = 1 Then ' ELEMENT_NODE
+                hasElementChildren = True
+                Exit For
+            ElseIf child.NodeType = 3 Then ' TEXT_NODE
+                Dim txt As String: txt = Trim$(child.Text)
+                If Len(txt) > 0 Then
+                    hasTextContent = True
+                    textContent = txt
+                End If
+            End If
+        Next
+    End If
+
+    ' Handle different cases
+    If Not node.hasChildNodes Then
+        ' Self-closing tag
+        result = result & "/>" & vbCrLf
+    ElseIf hasTextContent And Not hasElementChildren Then
+        ' Simple text content
+        result = result & ">" & textContent & "</" & node.nodeName & ">" & vbCrLf
+    ElseIf hasElementChildren Then
+        ' Has child elements
+        result = result & ">" & vbCrLf
+
+        ' Add child elements
+        For Each child In node.ChildNodes
+            If child.NodeType = 1 Then ' ELEMENT_NODE
+                result = result & FormatXMLNode(child, depth + 1)
+            End If
+        Next
+
+        ' Closing tag
+        result = result & indent & "</" & node.nodeName & ">" & vbCrLf
+    Else
+        ' Empty element
+        result = result & "></" & node.nodeName & ">" & vbCrLf
+    End If
+
+    FormatXMLNode = result
+    Exit Function
+
+NodeError:
+    ' Return empty string on error
+    FormatXMLNode = ""
 End Function
