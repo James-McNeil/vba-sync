@@ -377,11 +377,37 @@ Private Sub CreateExcelStructureSummary(wb As Workbook, excelDir As String, expo
     summary = summary & "## Named Ranges" & vbCrLf
     If wb.Names.Count > 0 Then
         Dim nm As Name
+        Dim nmCount As Long: nmCount = 0
+        Dim nmErrorCount As Long: nmErrorCount = 0
+        Dim nmFunctionCount As Long: nmFunctionCount = 0
+
         For Each nm In wb.Names
             On Error Resume Next
-            summary = summary & "- **" & nm.Name & "**: " & nm.RefersTo & vbCrLf
+            Dim refersTo As String: refersTo = nm.RefersTo
             On Error GoTo 0
+
+            ' Count different types of names
+            If InStr(refersTo, "#REF!") > 0 Then
+                nmErrorCount = nmErrorCount + 1
+                summary = summary & "- **" & nm.Name & "**: " & refersTo & " ⚠️ (Broken reference)" & vbCrLf
+            ElseIf InStr(refersTo, "#NAME?") > 0 Then
+                nmFunctionCount = nmFunctionCount + 1
+                ' Skip internal Excel function names to reduce clutter
+                If Not (Left(nm.Name, 6) = "_xlfn." Or Left(nm.Name, 6) = "_xlpm." Or Left(nm.Name, 7) = "_xleta.") Then
+                    summary = summary & "- **" & nm.Name & "**: " & refersTo & vbCrLf
+                End If
+            Else
+                nmCount = nmCount + 1
+                summary = summary & "- **" & nm.Name & "**: " & refersTo & vbCrLf
+            End If
         Next
+
+        If nmErrorCount > 0 Then
+            summary = summary & vbCrLf & "*Note: " & nmErrorCount & " broken reference(s) found - review workbook for errors*" & vbCrLf
+        End If
+        If nmFunctionCount > 0 Then
+            summary = summary & vbCrLf & "*Note: " & nmFunctionCount & " internal Excel function names hidden (LAMBDA parameters, etc.)*" & vbCrLf
+        End If
     Else
         summary = summary & "- No named ranges found" & vbCrLf
     End If
