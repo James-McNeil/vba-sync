@@ -1007,8 +1007,11 @@ Private Function FilterWorksheetXML(xmlText As String) As String
         Exit Function
     End If
 
-    ' Remove volatile attributes from all <c> (cell) elements
-    Dim cells As Object: Set cells = xmlDoc.SelectNodes("//c")
+    ' Set up namespace for Excel SpreadsheetML (required for XPath queries)
+    xmlDoc.setProperty "SelectionNamespaces", "xmlns:x='http://schemas.openxmlformats.org/spreadsheetml/2006/main'"
+
+    ' Remove volatile attributes from all <c> (cell) elements using namespace-aware XPath
+    Dim cells As Object: Set cells = xmlDoc.SelectNodes("//x:c")
     If Not cells Is Nothing Then
         Dim cell As Object
         For Each cell In cells
