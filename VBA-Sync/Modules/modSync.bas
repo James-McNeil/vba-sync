@@ -393,7 +393,12 @@ Private Sub CreateExcelStructureSummary(wb As Workbook, excelDir As String, expo
             ElseIf InStr(refersTo, "#NAME?") > 0 Then
                 nmFunctionCount = nmFunctionCount + 1
                 ' Skip internal Excel function names to reduce clutter
-                If Not (Left(nm.Name, 6) = "_xlfn." Or Left(nm.Name, 6) = "_xlpm." Or Left(nm.Name, 7) = "_xleta.") Then
+                Dim skipInternal As Boolean
+                skipInternal = (Left(nm.Name, 6) = "_xlfn.") Or _
+                               (Left(nm.Name, 6) = "_xlpm.") Or _
+                               (Left(nm.Name, 7) = "_xleta.") Or _
+                               (Left(nm.Name, 6) = "_xlop.")
+                If Not skipInternal Then
                     summary = summary & "- **" & nm.Name & "**: " & refersTo & vbCrLf
                 End If
             Else
