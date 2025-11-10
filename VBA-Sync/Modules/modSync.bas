@@ -851,7 +851,7 @@ Private Function FormatXMLNode(node As Object, depth As Long) As String
     If Not node.Attributes Is Nothing Then
         Dim attr As Object
         For Each attr In node.Attributes
-            attrList = attrList & " " & attr.nodeName & "=""" & attr.Text & """"
+            attrList = attrList & " " & attr.nodeName & "=""" & EscapeXMLAttribute(attr.Text) & """"
         Next
     End If
 
@@ -869,10 +869,10 @@ Private Function FormatXMLNode(node As Object, depth As Long) As String
             For Each attr In node.Attributes
                 ' First attribute stays on same line, rest wrap
                 If firstAttr Then
-                    result = result & " " & attr.nodeName & "=""" & attr.Text & """"
+                    result = result & " " & attr.nodeName & "=""" & EscapeXMLAttribute(attr.Text) & """"
                     firstAttr = False
                 Else
-                    result = result & vbCrLf & attrIndent & attr.nodeName & "=""" & attr.Text & """"
+                    result = result & vbCrLf & attrIndent & attr.nodeName & "=""" & EscapeXMLAttribute(attr.Text) & """"
                 End If
             Next
         End If
@@ -908,7 +908,7 @@ Private Function FormatXMLNode(node As Object, depth As Long) As String
         result = result & " />" & vbCrLf
     ElseIf hasTextContent And Not hasElementChildren Then
         ' Simple text content
-        result = result & ">" & textContent & "</" & node.nodeName & ">" & vbCrLf
+        result = result & ">" & EscapeXMLContent(textContent) & "</" & node.nodeName & ">" & vbCrLf
     ElseIf hasElementChildren Then
         ' Has child elements
         result = result & ">" & vbCrLf
@@ -933,4 +933,26 @@ Private Function FormatXMLNode(node As Object, depth As Long) As String
 NodeError:
     ' Return empty string on error
     FormatXMLNode = ""
+End Function
+
+' Escape special XML characters in attribute values
+Private Function EscapeXMLAttribute(text As String) As String
+    Dim result As String: result = text
+    ' Must escape in this order to avoid double-escaping
+    result = Replace(result, "&", "&amp;")   ' Must be first
+    result = Replace(result, "<", "&lt;")
+    result = Replace(result, ">", "&gt;")
+    result = Replace(result, """", "&quot;")
+    result = Replace(result, "'", "&apos;")
+    EscapeXMLAttribute = result
+End Function
+
+' Escape special XML characters in element content
+Private Function EscapeXMLContent(text As String) As String
+    Dim result As String: result = text
+    ' Must escape in this order to avoid double-escaping
+    result = Replace(result, "&", "&amp;")   ' Must be first
+    result = Replace(result, "<", "&lt;")
+    result = Replace(result, ">", "&gt;")
+    EscapeXMLContent = result
 End Function
