@@ -85,6 +85,8 @@ Const ENABLE_WORKSHEET_TRUNCATION As Boolean = False  ' Set to True to limit wor
 Const WORKSHEET_LINE_LIMIT As Long = 200
 Const XML_INDENT_SPACES As Long = 4  ' Number of spaces per indent level (2 or 4 typical)
 Const XML_LINE_LENGTH As Long = 100  ' Target line length before wrapping attributes
+' NOTE: Worksheet XML filtering automatically removes volatile style (s) and type (t) attributes
+' to prevent git churn when styles.xml or sharedStrings.xml are reordered by Excel
 
 '====================  Ribbon wrappers  ====================
 Public Sub ExportProject(control As Object)
@@ -317,8 +319,8 @@ Private Sub CopyExcelFileWithLimit(sourcePath As String, destDir As String, file
         Dim sourceText As String
         sourceText = fso.OpenTextFile(sourcePath, 1).ReadAll
 
-        ' Format XML first for better readability
-        sourceText = FormatXML(sourceText)
+        ' Strip volatile style/string references from worksheet XML
+        sourceText = FilterWorksheetXML(sourceText)
 
         ' Optionally limit to first N lines to avoid huge worksheet data files
         If ENABLE_WORKSHEET_TRUNCATION Then
@@ -986,4 +988,54 @@ Private Function EscapeXMLContent(text As String) As String
     result = Replace(result, "<", "&lt;")
     result = Replace(result, ">", "&gt;")
     EscapeXMLContent = result
+End Function
+
+' Filter worksheet XML to keep only semantic content (strip volatile style/string references)
+' Keeps: <row>, <c r="...">, <f>, <v> (cell structure, formulas, values)
+' Removes: s="..." (style index), t="..." (type/shared string reference) attributes
+Private Function FilterWorksheetXML(xmlText As String) As String
+    On Error GoTo FilterError
+
+    ' Use MSXML to parse the XML
+    Dim xmlDoc As Object: Set xmlDoc = CreateObject("MSXML2.DOMDocument.6.0")
+    xmlDoc.async = False
+    xmlDoc.preserveWhiteSpace = False
+
+    If Not xmlDoc.LoadXML(xmlText) Then
+        ' Failed to parse - return formatted original
+        FilterWorksheetXML = FormatXML(xmlText)
+        Exit Function
+    End If
+
+    ' Remove volatile attributes from all <c> (cell) elements
+    Dim cells As Object: Set cells = xmlDoc.SelectNodes("//c")
+    If Not cells Is Nothing Then
+        Dim cell As Object
+        For Each cell In cells
+            ' Remove style reference (s attribute) - this is the volatile index
+            If Not cell.Attributes.getNamedItem("s") Is Nothing Then
+                cell.Attributes.removeNamedItem "s"
+            End If
+            ' Remove type reference (t attribute) - often references shared strings
+            If Not cell.Attributes.getNamedItem("t") Is Nothing Then
+                cell.Attributes.removeNamedItem "t"
+            End If
+        Next
+    End If
+
+    ' Build formatted XML output
+    Dim result As String: result = ""
+
+    ' Add XML declaration
+    result = "<?xml version=""1.0"" encoding=""UTF-8""?>" & vbCrLf
+
+    ' Format the document with filtered content
+    result = result & FormatXMLNode(xmlDoc.DocumentElement, 0)
+
+    FilterWorksheetXML = result
+    Exit Function
+
+FilterError:
+    ' If filtering fails, fall back to regular formatting
+    FilterWorksheetXML = FormatXML(xmlText)
 End Function
