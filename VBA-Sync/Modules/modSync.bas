@@ -83,6 +83,8 @@ Const GIT_IGNORE As String = ".gitignore"
 Const README_FILE As String = "README.md"
 Const ENABLE_WORKSHEET_TRUNCATION As Boolean = False  ' Set to True to limit worksheet XML size
 Const WORKSHEET_LINE_LIMIT As Long = 200
+Const XML_INDENT_SPACES As Long = 4  ' Number of spaces per indent level (2 or 4 typical)
+Const XML_LINE_LENGTH As Long = 100  ' Target line length before wrapping attributes
 
 '====================  Ribbon wrappers  ====================
 Public Sub ExportProject(control As Object)
@@ -822,8 +824,7 @@ End Function
 Private Function FormatXMLNode(node As Object, depth As Long) As String
     On Error GoTo NodeError
 
-    Const INDENT_SPACES As String = "  "  ' 2 spaces per indent level
-    Dim indent As String: indent = String(depth, INDENT_SPACES)
+    Dim indent As String: indent = Space$(depth * XML_INDENT_SPACES)
     Dim result As String: result = ""
 
     ' Skip text nodes that are only whitespace
@@ -842,15 +843,42 @@ Private Function FormatXMLNode(node As Object, depth As Long) As String
         Exit Function
     End If
 
-    ' Start element tag
-    result = indent & "<" & node.nodeName
+    ' Start building the opening tag
+    Dim openTag As String: openTag = indent & "<" & node.nodeName
 
-    ' Add attributes
+    ' Collect and format attributes
+    Dim attrList As String: attrList = ""
     If Not node.Attributes Is Nothing Then
         Dim attr As Object
         For Each attr In node.Attributes
-            result = result & " " & attr.nodeName & "=""" & attr.Text & """"
+            attrList = attrList & " " & attr.nodeName & "=""" & attr.Text & """"
         Next
+    End If
+
+    ' Check if we need to wrap attributes based on line length
+    Dim fullLine As String: fullLine = openTag & attrList
+    Dim needsWrapping As Boolean: needsWrapping = (Len(fullLine) > XML_LINE_LENGTH) And (Len(attrList) > 0)
+
+    If needsWrapping Then
+        ' Format with wrapped attributes - each attribute on new line
+        result = openTag
+        Dim attrIndent As String: attrIndent = Space$((depth + 1) * XML_INDENT_SPACES)
+
+        If Not node.Attributes Is Nothing Then
+            Dim firstAttr As Boolean: firstAttr = True
+            For Each attr In node.Attributes
+                ' First attribute stays on same line, rest wrap
+                If firstAttr Then
+                    result = result & " " & attr.nodeName & "=""" & attr.Text & """"
+                    firstAttr = False
+                Else
+                    result = result & vbCrLf & attrIndent & attr.nodeName & "=""" & attr.Text & """"
+                End If
+            Next
+        End If
+    Else
+        ' All attributes on one line (short elements)
+        result = openTag & attrList
     End If
 
     ' Check if element has children
@@ -877,7 +905,7 @@ Private Function FormatXMLNode(node As Object, depth As Long) As String
     ' Handle different cases
     If Not node.hasChildNodes Then
         ' Self-closing tag
-        result = result & "/>" & vbCrLf
+        result = result & " />" & vbCrLf
     ElseIf hasTextContent And Not hasElementChildren Then
         ' Simple text content
         result = result & ">" & textContent & "</" & node.nodeName & ">" & vbCrLf
